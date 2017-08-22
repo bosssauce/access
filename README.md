@@ -16,7 +16,7 @@ import 	(
     // ...
 )
 
-// create a grand for a user
+// create a grant for a user
 func (u *User) AfterAPICreate(res http.ResponseWriter, req *http.Request) error {
     // create an access configuration including the duration after which the 
     // token will expire, the ResponseWriter to write the token to, and which
@@ -42,4 +42,6 @@ func (u *User) AfterAPICreate(res http.ResponseWriter, req *http.Request) error 
 
     return nil
 }
+
+// Use access.IsGranted and access.IsOwner 
 ```
