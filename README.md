@@ -1,14 +1,11 @@
 # access
 [Ponzu](https://ponzu-cms.org) Addon to manage API access grants and tokens for authentication
 
-<<<<<<< HEAD
 ### Installation:
 ```bash
 $ ponzu add github.com/bosssauce/access
 ```
 
-=======
->>>>>>> 39f739b7a3f705443c77327e9ae031442fa6c1e6
 ## Usage
 
 ```go
