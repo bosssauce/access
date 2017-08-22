@@ -32,7 +32,7 @@ type APIAccess struct {
 type Config struct {
 	ExpireAfter    time.Duration
 	ResponseWriter http.ResponseWriter
-	TokenStore     interface{}
+	TokenStore     reqHeaderOrHTTPCookie
 }
 
 type reqHeaderOrHTTPCookie interface{}
