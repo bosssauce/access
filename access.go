@@ -89,7 +89,7 @@ func Grant(email, password string, cfg *Config) (*APIAccess, error) {
 	})
 
 	if err != nil {
-		return nil, fmt.Errorf("failed to store APIAccess, %v", err)
+		return nil, err
 	}
 
 	return apiAccess, nil
@@ -151,7 +151,8 @@ func updateGrant(email, password string, cfg *Config) error {
 
 	if !user.IsUser(usr, password) {
 		return fmt.Errorf(
-			"unauthorized attempt to update grant for %s", apiAccess.Email)
+			"unauthorized attempt to update grant for %s", apiAccess.Email,
+		)
 	}
 
 	return nil
