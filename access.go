@@ -35,6 +35,8 @@ type Config struct {
 	TokenStore     interface{}
 }
 
+type reqHeaderOrHTTPCookie interface{}
+
 func init() {
 	db.AddBucket(apiAccessStore)
 }
@@ -97,7 +99,7 @@ func Grant(email, password string, cfg *Config) (*APIAccess, error) {
 
 // IsGranted checks if the user request is authenticated by the token held within
 // the provided tokenStore (should be a http.Cookie or http.Header)
-func IsGranted(req *http.Request, tokenStore interface{}) bool {
+func IsGranted(req *http.Request, tokenStore reqHeaderOrHTTPCookie) bool {
 	token, err := getToken(req, tokenStore)
 	if err != nil {
 		log.Println("failed to get token to check API access grant")
@@ -109,7 +111,7 @@ func IsGranted(req *http.Request, tokenStore interface{}) bool {
 
 // IsOwner validates the access token and checks the claims within the
 // authenticated request's JWT for the email associated with the grant.
-func IsOwner(req *http.Request, tokenStore interface{}, email string) bool {
+func IsOwner(req *http.Request, tokenStore reqHeaderOrHTTPCookie, email string) bool {
 	token, err := getToken(req, tokenStore)
 	if err != nil {
 		log.Println("failed to get token to check API access owner")
@@ -121,7 +123,7 @@ func IsOwner(req *http.Request, tokenStore interface{}, email string) bool {
 	}
 
 	claims := jwt.GetClaims(token)
-	if claims["email"].(string) != email {
+	if claims["access"].(string) != email {
 		return false
 	}
 
@@ -158,7 +160,7 @@ func updateGrant(email, password string, cfg *Config) error {
 	return nil
 }
 
-func getToken(req *http.Request, tokenStore interface{}) (string, error) {
+func getToken(req *http.Request, tokenStore reqHeaderOrHTTPCookie) (string, error) {
 	switch tokenStore.(type) {
 	case http.Cookie:
 		cookie, err := req.Cookie(apiAccessCookie)
