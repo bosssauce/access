@@ -22,9 +22,9 @@ func (u *User) AfterAPICreate(res http.ResponseWriter, req *http.Request) error 
     // token will expire, the ResponseWriter to write the token to, and which
     // of the req.Header or req.Cookie{}
     cfg := &access.Config{
-    ExpireAfter:    time.Hour * 24 * 7,
-    ResponseWriter: res,
-    TokenStore:     req.Header,
+        ExpireAfter:    time.Hour * 24 * 7,
+        ResponseWriter: res,
+        TokenStore:     req.Header,
     }
 
     // Grant access to the user based on the request
@@ -41,7 +41,5 @@ func (u *User) AfterAPICreate(res http.ResponseWriter, req *http.Request) error 
     )
 
     return nil
-}
-
-// Use access.IsGranted and access.IsOwner 
+}  
 ```
