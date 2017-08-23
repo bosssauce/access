@@ -33,6 +33,7 @@ type Config struct {
 	ExpireAfter    time.Duration
 	ResponseWriter http.ResponseWriter
 	TokenStore     reqHeaderOrHTTPCookie
+	SecureCookie   bool
 }
 
 type reqHeaderOrHTTPCookie interface{}
@@ -46,16 +47,16 @@ func init() {
 // to update the grant but will fail if unauthorized
 func Grant(email, password string, cfg *Config) (*APIAccess, error) {
 	if email == "" {
-		return nil, fmt.Errorf("failed to create new APIAccess, %s", "email must not be empty")
+		return nil, fmt.Errorf("%s", "email must not be empty")
 	}
 
 	if password == "" {
-		return nil, fmt.Errorf("failed to create new APIAccess, %s", "password must not be empty")
+		return nil, fmt.Errorf("%s", "password must not be empty")
 	}
 
 	u, err := user.New(email, password)
 	if err != nil {
-		return nil, fmt.Errorf("failed to create new APIAccess, %v", err)
+		return nil, err
 	}
 
 	apiAccess := &APIAccess{
@@ -64,7 +65,7 @@ func Grant(email, password string, cfg *Config) (*APIAccess, error) {
 		Salt:  u.Salt,
 	}
 
-	err = setToken(apiAccess, cfg)
+	err = apiAccess.setToken(cfg)
 	if err != nil {
 		return nil, err
 	}
@@ -78,7 +79,7 @@ func Grant(email, password string, cfg *Config) (*APIAccess, error) {
 		if b.Get([]byte(u.Email)) != nil {
 			err := updateGrant(email, password, cfg)
 			if err != nil {
-				return fmt.Errorf("failed to update APIAccess grant for %s", u.Email)
+				return fmt.Errorf("failed to update APIAccess grant for %s, %v", u.Email, err)
 			}
 		}
 
@@ -175,11 +176,11 @@ func getToken(req *http.Request, tokenStore reqHeaderOrHTTPCookie) (string, erro
 		return strings.TrimPrefix(bearer, "Bearer "), nil
 
 	default:
-		return "", fmt.Errorf("failed to get token, %s", "unrecognized token store")
+		return "", fmt.Errorf("%s", "unrecognized token store")
 	}
 }
 
-func setToken(a *APIAccess, cfg *Config) error {
+func (a *APIAccess) setToken(cfg *Config) error {
 	exp := time.Now().Add(cfg.ExpireAfter)
 	claims := map[string]interface{}{
 		"exp":    exp.Unix(),
@@ -199,14 +200,16 @@ func setToken(a *APIAccess, cfg *Config) error {
 
 	case http.Cookie:
 		http.SetCookie(cfg.ResponseWriter, &http.Cookie{
-			Name:    apiAccessCookie,
-			Value:   token,
-			Expires: exp,
-			Path:    "/",
+			Name:     apiAccessCookie,
+			Value:    token,
+			Expires:  exp,
+			Path:     "/",
+			HttpOnly: true,
+			Secure:   cfg.SecureCookie,
 		})
 
 	default:
-		return fmt.Errorf("failed to set token, %s", "unrecognized token store")
+		return fmt.Errorf("%s", "unrecognized token store")
 	}
 
 	return nil
