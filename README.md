@@ -118,6 +118,7 @@ type Config struct {
 	ExpireAfter    time.Duration
 	ResponseWriter http.ResponseWriter
 	TokenStore     reqHeaderOrHTTPCookie
+	CustomClaims   map[string]interface{} // claims to add to your token
 	SecureCookie   bool // optional, if using http.Cookie{} as TokenStore
 }
 ```

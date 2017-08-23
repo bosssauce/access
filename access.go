@@ -33,6 +33,7 @@ type Config struct {
 	ExpireAfter    time.Duration
 	ResponseWriter http.ResponseWriter
 	TokenStore     reqHeaderOrHTTPCookie
+	CustomClaims   map[string]interface{}
 	SecureCookie   bool
 }
 
@@ -185,6 +186,17 @@ func (a *APIAccess) setToken(cfg *Config) error {
 	claims := map[string]interface{}{
 		"exp":    exp.Unix(),
 		"access": a.Email,
+	}
+
+	for k, v := range cfg.CustomClaims {
+		if _, ok := claims[k]; ok {
+			return fmt.Errorf(
+				"custom Config claim [%s] collides with internal claim [%s], %s",
+				k, k, "please rename custom claim",
+			)
+		}
+
+		claims[k] = v
 	}
 
 	token, err := jwt.New(claims)
