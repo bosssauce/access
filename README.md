@@ -9,6 +9,7 @@ $ ponzu add github.com/bosssauce/access
 ## Usage
 
 ```go
+// content/user.go
 package content
 
 import (
@@ -50,13 +51,54 @@ func (u *User) AfterAPICreate(res http.ResponseWriter, req *http.Request) error 
 }
 ```
 
+#### *Then, from other content type files:*
+
+```go
+// content/private_event.go
+package content
+
+import (
+	"github.com/bosssauce/access"
+	// ...
+)
+
+type PrivateEvent struct {
+	// ...
+	OrganizerEmail string
+	Location       string
+	Duration       int
+	Rsvps          []string
+}
+
+func (e *PrivateEvent) BeforeAPICreate(res http.ResponseWriter, req *http.Request) error {
+	if !access.IsGranted(req, req.Header) {
+		return fmt.Errorf("no access grant or valid token in request from: %s", req.RemoteAddr)
+	}
+
+	// request contains proper, valid token
+	return nil
+}
+
+func (e *PrivateEvent) BeforeAPIUpdate(res http.ResponseWriter, req *http.Request) error {
+	if !access.IsOwner(req, req.Header, e.OrganizerEmail) {
+		return fmt.Errorf("grant provided is not owner of PrivateEvent, from %s", req.RemoteAddr)
+	}
+
+	// request contains proper, valid token
+	return nil
+}
+```
+
+
 ## Motivation
 
 Some Ponzu content types need to be kept locked down and only accessible to
 specific users or other owners. The `access` addon makes it easy to create a 
 token-based access grant provided to a user, and then control the flow of data
 output through Ponzu's content API through package methods like `access.IsGranted`
-and `access.IsOwner`. Once a grant has been given to a request and returned via the response, the provided token is used to make follow-on requests for content which may be otherwise hidden, have omitted fields, or block create/update/delete operations. 
+and `access.IsOwner`. Once a grant has been given to a request and returned via 
+the response, the provided token is used to make follow-on requests for content 
+which may be otherwise hidden, have omitted fields, or block create/update/delete operations. 
 
 ## API
 
@@ -76,9 +118,14 @@ type Config struct {
 	ExpireAfter    time.Duration
 	ResponseWriter http.ResponseWriter
 	TokenStore     reqHeaderOrHTTPCookie
+	SecureCookie   bool // optional, if using http.Cookie{} as TokenStore
 }
 ```
-- **Note:** The `TokenStore reqHeaderOrHTTPCookie` field within `Config` is an `interface{}` used to declare the means by which a token is sent and checked by the `access` addon. Setting it to the `req.Header` will add an `"Authorization: Beader $TOKEN"` header to the response, and alternatively setting the `TokenStore` to an `http.Cookie{}` will add the token in a cookie named `_apiAccessToken` to the response.
+- **Note:** The `TokenStore reqHeaderOrHTTPCookie` field within `Config` is an 
+`interface{}` used to declare the means by which a token is sent and checked by 
+the `access` addon. Setting it to the `req.Header` will add an `"Authorization: Beader $TOKEN"` 
+header to the response, and alternatively setting the `TokenStore` to an `http.Cookie{}` 
+will add the token in a cookie named `_apiAccessToken` to the response.
 
 
 `Grant` creates a new APIAccess and saves it to the __apiAccess bucket in the database
