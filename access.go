@@ -22,7 +22,7 @@ const (
 
 // APIAccess is the data for an API access grant
 type APIAccess struct {
-	Email string `json:"email"`
+	Key   string `json:"key"`
 	Hash  string `json:"hash"`
 	Salt  string `json:"salt"`
 	Token string `json:"token"`
@@ -46,24 +46,24 @@ func init() {
 // Grant creates a new APIAccess and saves it to the __apiAccess bucket in the database
 // and if an existing APIAccess grant is encountered in the database, Grant attempts
 // to update the grant but will fail if unauthorized
-func Grant(email, password string, cfg *Config) (*APIAccess, error) {
-	if email == "" {
-		return nil, fmt.Errorf("%s", "email must not be empty")
+func Grant(key, password string, cfg *Config) (*APIAccess, error) {
+	if key == "" {
+		return nil, fmt.Errorf("%s", "key must not be empty")
 	}
 
 	if password == "" {
 		return nil, fmt.Errorf("%s", "password must not be empty")
 	}
 
-	u, err := user.New(email, password)
+	u, err := user.New(key, password)
 	if err != nil {
 		return nil, err
 	}
 
 	apiAccess := &APIAccess{
-		Email: u.Email,
-		Hash:  u.Hash,
-		Salt:  u.Salt,
+		Key:  u.Email,
+		Hash: u.Hash,
+		Salt: u.Salt,
 	}
 
 	err = apiAccess.setToken(cfg)
@@ -77,10 +77,10 @@ func Grant(email, password string, cfg *Config) (*APIAccess, error) {
 			return fmt.Errorf("failed to get bucket %s", apiAccessStore)
 		}
 
-		if b.Get([]byte(u.Email)) != nil {
-			err := updateGrant(email, password, cfg)
+		if b.Get([]byte(apiAccess.Key)) != nil {
+			err := updateGrant(key, password, cfg)
 			if err != nil {
-				return fmt.Errorf("failed to update APIAccess grant for %s, %v", u.Email, err)
+				return fmt.Errorf("failed to update APIAccess grant for %s, %v", apiAccess.Key, err)
 			}
 		}
 
@@ -89,7 +89,7 @@ func Grant(email, password string, cfg *Config) (*APIAccess, error) {
 			return fmt.Errorf("failed to marshal APIAccess to json, %v", err)
 		}
 
-		return b.Put([]byte(u.Email), j)
+		return b.Put([]byte(apiAccess.Key), j)
 	})
 
 	if err != nil {
@@ -112,8 +112,8 @@ func IsGranted(req *http.Request, tokenStore reqHeaderOrHTTPCookie) bool {
 }
 
 // IsOwner validates the access token and checks the claims within the
-// authenticated request's JWT for the email associated with the grant.
-func IsOwner(req *http.Request, tokenStore reqHeaderOrHTTPCookie, email string) bool {
+// authenticated request's JWT for the key key associated with the grant.
+func IsOwner(req *http.Request, tokenStore reqHeaderOrHTTPCookie, key string) bool {
 	token, err := getToken(req, tokenStore)
 	if err != nil {
 		log.Println("failed to get token to check API access owner")
@@ -125,14 +125,14 @@ func IsOwner(req *http.Request, tokenStore reqHeaderOrHTTPCookie, email string) 
 	}
 
 	claims := jwt.GetClaims(token)
-	if claims["access"].(string) != email {
+	if claims["access"].(string) != key {
 		return false
 	}
 
 	return true
 }
 
-func updateGrant(email, password string, cfg *Config) error {
+func updateGrant(key, password string, cfg *Config) error {
 	var apiAccess *APIAccess
 	err := db.Store().View(func(tx *bolt.Tx) error {
 		b := tx.Bucket([]byte(apiAccessStore))
@@ -140,7 +140,7 @@ func updateGrant(email, password string, cfg *Config) error {
 			return fmt.Errorf("failed to get %s bucket to update grant", apiAccessStore)
 		}
 
-		j := b.Get([]byte(email))
+		j := b.Get([]byte(key))
 		return json.Unmarshal(j, apiAccess)
 	})
 	if err != nil {
@@ -148,14 +148,14 @@ func updateGrant(email, password string, cfg *Config) error {
 	}
 
 	usr := &user.User{
-		Email: apiAccess.Email,
+		Email: apiAccess.Key,
 		Hash:  apiAccess.Hash,
 		Salt:  apiAccess.Salt,
 	}
 
 	if !user.IsUser(usr, password) {
 		return fmt.Errorf(
-			"unauthorized attempt to update grant for %s", apiAccess.Email,
+			"unauthorized attempt to update grant for %s", apiAccess.Key,
 		)
 	}
 
@@ -185,7 +185,7 @@ func (a *APIAccess) setToken(cfg *Config) error {
 	exp := time.Now().Add(cfg.ExpireAfter)
 	claims := map[string]interface{}{
 		"exp":    exp.Unix(),
-		"access": a.Email,
+		"access": a.Key,
 	}
 
 	for k, v := range cfg.CustomClaims {
