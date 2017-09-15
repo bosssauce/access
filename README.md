@@ -40,11 +40,9 @@ func (u *User) AfterAPICreate(res http.ResponseWriter, req *http.Request) error 
 		return err
 	}
 
-	fmt.Println(
-		fmt.Sprintf(
-			"The access token for user (%s) is: %s",
-			grant.Email, grant.Token,
-		),
+	fmt.Printf(
+		"The access token for user (%s) is: %s\n",
+		grant.Key, grant.Token,
 	)
 
 	return nil
@@ -72,7 +70,10 @@ type PrivateEvent struct {
 
 func (e *PrivateEvent) BeforeAPICreate(res http.ResponseWriter, req *http.Request) error {
 	if !access.IsGranted(req, req.Header) {
-		return fmt.Errorf("no access grant or valid token in request from: %s", req.RemoteAddr)
+		return fmt.Errorf(
+			"no access grant or valid token in request from: %s", 
+			req.RemoteAddr,
+		)
 	}
 
 	// request contains proper, valid token
@@ -81,7 +82,10 @@ func (e *PrivateEvent) BeforeAPICreate(res http.ResponseWriter, req *http.Reques
 
 func (e *PrivateEvent) BeforeAPIUpdate(res http.ResponseWriter, req *http.Request) error {
 	if !access.IsOwner(req, req.Header, e.OrganizerEmail) {
-		return fmt.Errorf("grant provided is not owner of PrivateEvent, from %s", req.RemoteAddr)
+		return fmt.Errorf(
+			"grant provided is not owner of PrivateEvent, from %s", 
+			req.RemoteAddr,
+		)
 	}
 
 	// request contains proper, valid token
@@ -133,7 +137,7 @@ will add the token in a cookie named `_apiAccessToken` to the response.
 and if an existing APIAccess grant is encountered in the database, Grant attempts
 to update the grant but will fail if unauthorized
 ```go
-func Grant(email, password string, cfg *Config) (*APIAccess, error)
+func Grant(key, password string, cfg *Config) (*APIAccess, error)
 ```
 
 
@@ -144,7 +148,7 @@ func IsGranted(req *http.Request, tokenStore reqHeaderOrHTTPCookie) bool
 ```
 
 `IsOwner` validates the access token and checks the claims within the
-authenticated request's JWT for the email associated with the grant.
+authenticated request's JWT for the key associated with the grant.
 ```go
-func IsOwner(req *http.Request, tokenStore reqHeaderOrHTTPCookie, email string) bool
+func IsOwner(req *http.Request, tokenStore reqHeaderOrHTTPCookie, key string) bool
 ```
