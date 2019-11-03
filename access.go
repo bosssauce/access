@@ -133,15 +133,14 @@ func IsOwner(req *http.Request, tokenStore reqHeaderOrHTTPCookie, key string) bo
 }
 
 func updateGrant(key, password string, cfg *Config) error {
-	var apiAccess *APIAccess
+	var apiAccess APIAccess
 	err := db.Store().View(func(tx *bolt.Tx) error {
 		b := tx.Bucket([]byte(apiAccessStore))
 		if b == nil {
 			return fmt.Errorf("failed to get %s bucket to update grant", apiAccessStore)
 		}
-
 		j := b.Get([]byte(key))
-		return json.Unmarshal(j, apiAccess)
+		return json.Unmarshal(j, &apiAccess)
 	})
 	if err != nil {
 		return fmt.Errorf("failed to get access grant to update grant, %v", err)
